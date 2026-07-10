@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -27,6 +27,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { performanceSeries, portfolioSummary, rebalanceIn } from "@/lib/mock-data";
+import { fetchDashboardPerformance, type PerformancePoint } from "@/lib/market-data";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -48,8 +49,27 @@ const fmtPct = (n: number) => `${(n * 100).toFixed(2)}%`;
 
 function DashboardPage() {
   const [range, setRange] = useState<"6M" | "1Y" | "2Y">("2Y");
+  const [series, setSeries] = useState<PerformancePoint[]>(performanceSeries);
+  const [dataState, setDataState] = useState<"loading" | "live" | "fallback">("loading");
+  const [dataSource, setDataSource] = useState("Loading market source...");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchDashboardPerformance().then((market) => {
+        if (cancelled) return;
+        setSeries(market.series);
+        setDataSource(market.source);
+        setDataState(market.isLive ? "live" : "fallback");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const slice =
-    range === "6M" ? performanceSeries.slice(-6) : range === "1Y" ? performanceSeries.slice(-12) : performanceSeries;
+    range === "6M" ? series.slice(-6) : range === "1Y" ? series.slice(-12) : series;
 
   return (
     <div className="grid-bg">
@@ -125,21 +145,26 @@ function DashboardPage() {
             <div className="min-w-0">
               <CardTitle className="truncate text-base sm:text-lg">Historical Performance</CardTitle>
               <p className="mt-0.5 truncate text-xs text-muted-foreground">
-                Portfolio yield vs benchmarks · rebased to 100
+                Portfolio proxy vs SPY and QQQ · rebased to 100
               </p>
             </div>
-            <div className="inline-flex shrink-0 rounded-lg border border-border/70 bg-card/60 p-0.5">
-              {(["6M", "1Y", "2Y"] as const).map((r) => (
-                <button
-                  key={r}
-                  onClick={() => setRange(r)}
-                  className={`num rounded-md px-3 py-1 text-xs font-medium transition-colors ${
-                    range === r ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {r}
-                </button>
-              ))}
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+              <Badge variant="outline" className={dataState === "live" ? "border-chart-2/40 bg-chart-2/10 text-chart-2" : "border-warning/40 bg-warning/10 text-warning"}>
+                {dataState === "loading" ? "Loading market data" : dataState === "live" ? "Live market data" : "Cached market data"}
+              </Badge>
+              <div className="inline-flex rounded-lg border border-border/70 bg-card/60 p-0.5">
+                {(["6M", "1Y", "2Y"] as const).map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => setRange(r)}
+                    className={`num rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                      range === r ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -165,11 +190,14 @@ function DashboardPage() {
                   />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
                   <Area type="monotone" dataKey="portfolio" name="Portfolio" stroke="var(--color-chart-1)" strokeWidth={2.5} fill="url(#gPort)" />
-                  <Line type="monotone" dataKey="sp500" name="S&P 500" stroke="var(--color-chart-2)" strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="nasdaq" name="Nasdaq" stroke="var(--color-chart-3)" strokeWidth={2} strokeDasharray="4 4" dot={false} />
+                  <Line type="monotone" dataKey="sp500" name="SPY" stroke="var(--color-chart-2)" strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="nasdaq" name="QQQ" stroke="var(--color-chart-3)" strokeWidth={2} strokeDasharray="4 4" dot={false} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Source: {dataSource}.
+            </p>
           </CardContent>
         </Card>
 

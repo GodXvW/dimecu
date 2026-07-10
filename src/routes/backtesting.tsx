@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   CartesianGrid,
   Legend,
@@ -20,6 +20,7 @@ import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { fetchBacktestResult, type BacktestResult } from "@/lib/market-data";
 
 export const Route = createFileRoute("/backtesting")({
   head: () => ({
@@ -41,7 +42,17 @@ const BENCHMARKS = [
   { value: "industrial", label: "Industrial Benchmark (Dow Jones)" },
 ];
 
-function runBacktest(seed: number, risk: number, benchmark: string) {
+function inputDate(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function yearsAgo(years: number) {
+  const date = new Date();
+  date.setFullYear(date.getFullYear() - years);
+  return inputDate(date);
+}
+
+function runBacktest(seed: number, risk: number, benchmark: string): BacktestResult {
   const months = 36;
   const base = new Date(2022, 0, 1);
   const drift = 0.008 + risk * 0.006;
@@ -77,12 +88,12 @@ function runBacktest(seed: number, risk: number, benchmark: string) {
   const sharpe = (mean / std) * Math.sqrt(12);
   const beta = 0.85 + risk * 0.35;
   const alpha = cagr - (0.02 + beta * (benchCagr - 0.02));
-  return { series, cagr, sharpe, maxDD, alpha, beta, benchCagr };
+  return { series, cagr, sharpe, maxDD, alpha, beta, benchCagr, source: "loading market data", isLive: false };
 }
 
 function BacktestingPage() {
-  const [start, setStart] = useState("2022-01-01");
-  const [end, setEnd] = useState("2024-12-31");
+  const [start, setStart] = useState(() => yearsAgo(3));
+  const [end, setEnd] = useState(() => inputDate(new Date()));
   const [benchmark, setBenchmark] = useState("sp500");
   const [risk, setRisk] = useState(1); // 0=Low 1=Med 2=High
   const [conditions, setConditions] = useState(
@@ -91,9 +102,26 @@ function BacktestingPage() {
   const [tags, setTags] = useState(["Momentum ≥ 70", "Quality ≥ 60", "Low Vol", "US Large Cap"]);
   const [runSeed, setRunSeed] = useState(1);
   const [hasRun, setHasRun] = useState(true);
+  const [result, setResult] = useState<BacktestResult>(() => runBacktest(1, 1, "sp500"));
+  const [dataState, setDataState] = useState<"loading" | "live" | "fallback">("loading");
 
-  const result = useMemo(() => runBacktest(runSeed, risk, benchmark), [runSeed, risk, benchmark]);
   const riskLabel = risk === 0 ? "Low" : risk === 1 ? "Medium" : "High";
+
+  useEffect(() => {
+    let cancelled = false;
+    setDataState("loading");
+
+    fetchBacktestResult(benchmark as "sp500" | "nasdaq" | "industrial", start, end, risk)
+      .then((nextResult) => {
+        if (cancelled) return;
+        setResult(nextResult);
+        setDataState(nextResult.isLive ? "live" : "fallback");
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [benchmark, end, risk, runSeed, start]);
 
   return (
     <div className="grid-bg">
@@ -122,6 +150,27 @@ function BacktestingPage() {
                   <Label className="text-xs">End Date</Label>
                   <Input type="date" value={end} onChange={(e) => setEnd(e.target.value)} className="num mt-1.5" />
                 </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { label: "1Y", years: 1 },
+                  { label: "3Y", years: 3 },
+                  { label: "5Y", years: 5 },
+                ].map((preset) => (
+                  <Button
+                    key={preset.label}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="num h-8"
+                    onClick={() => {
+                      setStart(yearsAgo(preset.years));
+                      setEnd(inputDate(new Date()));
+                    }}
+                  >
+                    {preset.label}
+                  </Button>
+                ))}
               </div>
 
               <div>
@@ -215,8 +264,8 @@ function BacktestingPage() {
                   <CardTitle className="truncate text-base">Custom Strategy vs {BENCHMARKS.find(b => b.value === benchmark)?.label}</CardTitle>
                   <p className="mt-0.5 truncate text-xs text-muted-foreground">Rebased to 100 · monthly compounding</p>
                 </div>
-                <Badge variant="outline" className="shrink-0 border-chart-2/40 bg-chart-2/10 text-chart-2">
-                  <Sparkles className="mr-1 h-3 w-3" /> Bias-free
+                <Badge variant="outline" className={dataState === "live" ? "shrink-0 border-chart-2/40 bg-chart-2/10 text-chart-2" : "shrink-0 border-warning/40 bg-warning/10 text-warning"}>
+                  <Sparkles className="mr-1 h-3 w-3" /> {dataState === "loading" ? "Loading data" : dataState === "live" ? "Live market data" : "Cached market data"}
                 </Badge>
               </CardHeader>
               <CardContent>
@@ -241,6 +290,7 @@ function BacktestingPage() {
                     <span className="text-loss font-semibold">{(result.maxDD * 100).toFixed(1)}%</span> remains within the {riskLabel} risk envelope.
                   </div>
                 )}
+                <p className="mt-3 text-xs text-muted-foreground">Source: {result.source}.</p>
               </CardContent>
             </Card>
           </div>
