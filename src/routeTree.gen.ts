@@ -9,8 +9,26 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as DataPipelineRouteImport } from './routes/data-pipeline'
+import { Route as BacktestingRouteImport } from './routes/backtesting'
+import { Route as AiSuggestionsRouteImport } from './routes/ai-suggestions'
 import { Route as IndexRouteImport } from './routes/index'
 
+const DataPipelineRoute = DataPipelineRouteImport.update({
+  id: '/data-pipeline',
+  path: '/data-pipeline',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BacktestingRoute = BacktestingRouteImport.update({
+  id: '/backtesting',
+  path: '/backtesting',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AiSuggestionsRoute = AiSuggestionsRouteImport.update({
+  id: '/ai-suggestions',
+  path: '/ai-suggestions',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -19,28 +37,61 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/ai-suggestions': typeof AiSuggestionsRoute
+  '/backtesting': typeof BacktestingRoute
+  '/data-pipeline': typeof DataPipelineRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/ai-suggestions': typeof AiSuggestionsRoute
+  '/backtesting': typeof BacktestingRoute
+  '/data-pipeline': typeof DataPipelineRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/ai-suggestions': typeof AiSuggestionsRoute
+  '/backtesting': typeof BacktestingRoute
+  '/data-pipeline': typeof DataPipelineRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/ai-suggestions' | '/backtesting' | '/data-pipeline'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/ai-suggestions' | '/backtesting' | '/data-pipeline'
+  id: '__root__' | '/' | '/ai-suggestions' | '/backtesting' | '/data-pipeline'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AiSuggestionsRoute: typeof AiSuggestionsRoute
+  BacktestingRoute: typeof BacktestingRoute
+  DataPipelineRoute: typeof DataPipelineRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/data-pipeline': {
+      id: '/data-pipeline'
+      path: '/data-pipeline'
+      fullPath: '/data-pipeline'
+      preLoaderRoute: typeof DataPipelineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/backtesting': {
+      id: '/backtesting'
+      path: '/backtesting'
+      fullPath: '/backtesting'
+      preLoaderRoute: typeof BacktestingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ai-suggestions': {
+      id: '/ai-suggestions'
+      path: '/ai-suggestions'
+      fullPath: '/ai-suggestions'
+      preLoaderRoute: typeof AiSuggestionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -53,6 +104,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AiSuggestionsRoute: AiSuggestionsRoute,
+  BacktestingRoute: BacktestingRoute,
+  DataPipelineRoute: DataPipelineRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
