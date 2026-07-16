@@ -3,11 +3,10 @@ import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
   Area,
-  AreaChart,
   CartesianGrid,
+  ComposedChart,
   Legend,
   Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -170,7 +169,7 @@ function DashboardPage() {
           <CardContent>
             <div className="h-[340px] w-full">
               <ResponsiveContainer>
-                <AreaChart data={slice} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+                <ComposedChart data={slice} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
                   <defs>
                     <linearGradient id="gPort" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="var(--color-chart-1)" stopOpacity={0.35} />
@@ -190,9 +189,9 @@ function DashboardPage() {
                   />
                   <Legend wrapperStyle={{ fontSize: 12 }} />
                   <Area type="monotone" dataKey="portfolio" name="Portfolio" stroke="var(--color-chart-1)" strokeWidth={2.5} fill="url(#gPort)" />
-                  <Line type="monotone" dataKey="sp500" name="SPY" stroke="var(--color-chart-2)" strokeWidth={2} dot={false} />
-                  <Line type="monotone" dataKey="nasdaq" name="QQQ" stroke="var(--color-chart-3)" strokeWidth={2} strokeDasharray="4 4" dot={false} />
-                </AreaChart>
+                  <Line type="monotone" dataKey="sp500" name="SPY" stroke="var(--color-chart-2)" strokeWidth={2.5} dot={false} />
+                  <Line type="monotone" dataKey="nasdaq" name="QQQ" stroke="var(--color-chart-3)" strokeWidth={2.5} strokeDasharray="4 4" dot={false} />
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
             <p className="mt-3 text-xs text-muted-foreground">
